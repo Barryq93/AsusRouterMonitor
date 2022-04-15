@@ -26,7 +26,7 @@ Displays the gathered data
 Things are set up to so that connection to the mysql DB is already made 
 There is a prebuild dashboard made as part of the build to display the info gathered
 
-![GrafanaAsusRouterMonitor](https://github.com/barryq93/AsusRouterMonitor/)
+![GrafanaAsusRouterMonitor](https://github.com/Barryq93/AsusRouterMonitor/raw/img/grafanaDboard.png)
 This is what it looks like.
 
 ## HowTo
