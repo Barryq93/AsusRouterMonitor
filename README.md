@@ -2,9 +2,9 @@
 
 Got the idea from two different git repos 
 
-![GrafanaPart](https://github.com/jphilll/GrafanaAsusRouterMonitor)
+[GrafanaPart](https://github.com/jphilll/GrafanaAsusRouterMonitor)
 
-![CodeSide](https://github.com/lmeulen/AsusRouterMonitor)
+[CodeSide](https://github.com/lmeulen/AsusRouterMonitor)
 
 
 # GrafanaAsusRouterMonitor
@@ -26,7 +26,7 @@ Displays the gathered data
 Things are set up to so that connection to the mysql DB is already made 
 There is a prebuild dashboard made as part of the build to display the info gathered
 
-![GrafanaAsusRouterMonitor](https://github.com/jphilll/AsusRouterMonitor/raw/main/asusMonitor.png)
+![GrafanaAsusRouterMonitor](https://github.com/barryq93/AsusRouterMonitor/)
 This is what it looks like.
 
 ## HowTo
@@ -68,7 +68,7 @@ DBTYPE=mysql
 
 ### How to run
 
-1. Install install ![docker-compose](https://docs.docker.com/compose/install/)
+1. Install install [docker-compose](https://docs.docker.com/compose/install/)
 2. Make changes to .env file that suit
 3. Run `docker-compose up` and check that things are working 
 4. Once you are sure everything is working correctly run `docker-compose up -d` to keep things running in the background
