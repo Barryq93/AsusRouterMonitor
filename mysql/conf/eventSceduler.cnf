@@ -1,0 +1,3 @@
+# Custom conf to autostart the scheduler
+[mariadbd]
+event_scheduler=ON

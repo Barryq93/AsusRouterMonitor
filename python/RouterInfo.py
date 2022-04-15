@@ -160,7 +160,107 @@ class RouterInfo:
         totaldata['recv'] = rx
         rx -= int(meas_1['netdev']['INTERNET_rx'], base=16) * 8 / 1024 / 1024 / 2
         persec['rx'] = rx
-        return json.dumps({'speed': persec, 'total': totaldata})
+        return json.loads(json.dumps({'speed': persec, 'total': totaldata}))
+
+        def get_traffic_wireless2GHZ(self):
+        """
+        Get total and current amount of traffic since last restart (Megabit format)
+        Note there is a two second delay to determine current traffic
+        Format: {"speed": {"tx": 0.13004302978515625, "rx": 4.189826965332031},
+                 "total": {"sent": 15902.060073852539, "recv": 10931.135665893555}}
+        :returns: JSON with current up and down stream in Mbit/s and totals since last reboot
+        """
+        meas_1 = self.__get('netdev(appobj)')
+        time.sleep(2)
+        meas_2 = self.__get('netdev(appobj)')
+        meas_1 = json.loads(meas_1)
+        meas_2 = json.loads(meas_2)
+        persec = {}
+        totaldata = {}
+        tx = int(meas_2['netdev']['WIRELESS0_tx'], base=16) * 8 / 1024 / 1024 / 2
+        totaldata['sent'] = tx
+        tx -= int(meas_1['netdev']['WIRELESS0_tx'], base=16) * 8 / 1024 / 1024 / 2
+        persec['tx'] = tx
+        rx = int(meas_2['netdev']['WIRELESS0_rx'], base=16) * 8 / 1024 / 1024 / 2
+        totaldata['recv'] = rx
+        rx -= int(meas_1['netdev']['WIRELESS0_rx'], base=16) * 8 / 1024 / 1024 / 2
+        persec['rx'] = rx
+        return json.loads(json.dumps({'speed': persec, 'total': totaldata}))
+
+    def get_traffic_wireless5GHZ(self):
+        """
+        Get total and current amount of traffic since last restart (Megabit format)
+        Note there is a two second delay to determine current traffic
+        Format: {"speed": {"tx": 0.13004302978515625, "rx": 4.189826965332031},
+                 "total": {"sent": 15902.060073852539, "recv": 10931.135665893555}}
+        :returns: JSON with current up and down stream in Mbit/s and totals since last reboot
+        """
+        meas_1 = self.__get('netdev(appobj)')
+        time.sleep(2)
+        meas_2 = self.__get('netdev(appobj)')
+        meas_1 = json.loads(meas_1)
+        meas_2 = json.loads(meas_2)
+        persec = {}
+        totaldata = {}
+        tx = int(meas_2['netdev']['WIRELESS1_tx'], base=16) * 8 / 1024 / 1024 / 2
+        totaldata['sent'] = tx
+        tx -= int(meas_1['netdev']['WIRELESS1_tx'], base=16) * 8 / 1024 / 1024 / 2
+        persec['tx'] = tx
+        rx = int(meas_2['netdev']['WIRELESS1_rx'], base=16) * 8 / 1024 / 1024 / 2
+        totaldata['recv'] = rx
+        rx -= int(meas_1['netdev']['WIRELESS1_rx'], base=16) * 8 / 1024 / 1024 / 2
+        persec['rx'] = rx
+        return json.loads(json.dumps({'speed': persec, 'total': totaldata}))
+    
+    def get_traffic_wired(self):
+        """
+        Get total and current amount of traffic since last restart (Megabit format)
+        Note there is a two second delay to determine current traffic
+        Format: {"speed": {"tx": 0.13004302978515625, "rx": 4.189826965332031},
+                 "total": {"sent": 15902.060073852539, "recv": 10931.135665893555}}
+        :returns: JSON with current up and down stream in Mbit/s and totals since last reboot
+        """
+        meas_1 = self.__get('netdev(appobj)')
+        time.sleep(2)
+        meas_2 = self.__get('netdev(appobj)')
+        meas_1 = json.loads(meas_1)
+        meas_2 = json.loads(meas_2)
+        persec = {}
+        totaldata = {}
+        tx = int(meas_2['netdev']['WIRED_tx'], base=16) * 8 / 1024 / 1024 / 2
+        totaldata['sent'] = tx
+        tx -= int(meas_1['netdev']['WIRED_tx'], base=16) * 8 / 1024 / 1024 / 2
+        persec['tx'] = tx
+        rx = int(meas_2['netdev']['WIRED_rx'], base=16) * 8 / 1024 / 1024 / 2
+        totaldata['recv'] = rx
+        rx -= int(meas_1['netdev']['WIRED_rx'], base=16) * 8 / 1024 / 1024 / 2
+        persec['rx'] = rx
+        return json.loads(json.dumps({'speed': persec, 'total': totaldata}))
+    
+    def get_traffic_bridge(self):
+        """
+        Get total and current amount of traffic since last restart (Megabit format)
+        Note there is a two second delay to determine current traffic
+        Format: {"speed": {"tx": 0.13004302978515625, "rx": 4.189826965332031},
+                 "total": {"sent": 15902.060073852539, "recv": 10931.135665893555}}
+        :returns: JSON with current up and down stream in Mbit/s and totals since last reboot
+        """
+        meas_1 = self.__get('netdev(appobj)')
+        time.sleep(2)
+        meas_2 = self.__get('netdev(appobj)')
+        meas_1 = json.loads(meas_1)
+        meas_2 = json.loads(meas_2)
+        persec = {}
+        totaldata = {}
+        tx = int(meas_2['netdev']['BRIDGE_tx'], base=16) * 8 / 1024 / 1024 / 2
+        totaldata['sent'] = tx
+        tx -= int(meas_1['netdev']['BRIDGE_tx'], base=16) * 8 / 1024 / 1024 / 2
+        persec['tx'] = tx
+        rx = int(meas_2['netdev']['BRIDGE_rx'], base=16) * 8 / 1024 / 1024 / 2
+        totaldata['recv'] = rx
+        rx -= int(meas_1['netdev']['BRIDGE_rx'], base=16) * 8 / 1024 / 1024 / 2
+        persec['rx'] = rx
+        return json.loads(json.dumps({'speed': persec, 'total': totaldata}))
 
     def get_status_wan(self):
         """

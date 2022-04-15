@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: dbConnection
+    type: ${DBTYPE}
+    url: ${mysqlIP}:${mysqlPort}
+    database: ${dbName}
+    user: ${promUser}
+    secureJsonData:
+      password: ${promPass}
+    jsonData:
+      maxOpenConns: 0
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    version: 1
+    editable: true
+    isDefault: true
