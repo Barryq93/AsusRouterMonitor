@@ -2,9 +2,9 @@
 set -e
 
 mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
-  CREATE USER '${promUser}'@'%' IDENTIFIED BY '${promPass}';
+  CREATE USER '${grafanaUser}'@'%' IDENTIFIED BY '${grafanaPass}';
   CREATE USER '${monitorUser}'@'%' IDENTIFIED BY '${monitorPass}';
-  GRANT ALL PRIVILEGES ON *.* TO '${promUser}'@'%';
+  GRANT ALL PRIVILEGES ON *.* TO '${grafanaUser}'@'%';
   GRANT ALL PRIVILEGES ON *.* TO '${monitorUser}'@'%';
 
   SET CHARSET UTF8;

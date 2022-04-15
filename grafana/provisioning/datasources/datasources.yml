@@ -5,9 +5,9 @@ datasources:
     type: ${DBTYPE}
     url: ${mysqlIP}:${mysqlPort}
     database: ${dbName}
-    user: ${promUser}
+    user: ${grafanaUser}
     secureJsonData:
-      password: ${promPass}
+      password: ${grafanaPass}
     jsonData:
       maxOpenConns: 0
       maxIdleConns: 2
