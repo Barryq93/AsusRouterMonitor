@@ -10,6 +10,8 @@ Got the idea from two different git repos
 # GrafanaAsusRouterMonitor
 Monitor your Asus router with Grafana.
 
+Monitoring my ASUSWRT router
+
 ## What each piece does 
 ### Python
 This connects to the router and gathers the information and inserts it to the mysql DB at the interval set in the .env file
