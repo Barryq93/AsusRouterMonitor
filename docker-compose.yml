@@ -44,6 +44,8 @@ services:
     links:
       - mysql
     restart: on-failure
+    networks:
+      - asus
   
   grafana:
     image: grafana/grafana:latest
