@@ -49,11 +49,11 @@ mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
   DROP TABLE IF EXISTS clearedEvents;
   CREATE TABLE clearedEvents (
         timeStamp TIMESTAMP NOT NULL PRIMARY KEY,
-        clearCount int) ;
+        clearCount int);
 
   SET GLOBAL event_scheduler = ON;
 
-  delimiter |
+  DELIMITER //
   CREATE EVENT cleaning 
     ON SCHEDULE 
       EVERY 21 DAY 
@@ -66,10 +66,9 @@ mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
       INSERT INTO ${dbName}.clearedEvents (timeStamp, clearCount)
         SELECT CURRENT_TIMESTAMP, count(*)
           FROM ${dbName}.${tableName}
-          WHERE timeStamp < MAXTIME;
+          WHERE timeStamp < MaxTime;
       DELETE FROM ${dbName}.${tableName}
-      WHERE ${tableName}.timeStamp < MAXTIME;
-    END |
-  delimiter ;
+      WHERE ${tableName}.timeStamp < MaxTime;
+    END //
+  DELIMITER ;
 EOSQL
-

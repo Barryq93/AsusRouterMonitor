@@ -119,7 +119,7 @@ class RouterInfo:
                                   },
                                   "maclist": ["AC:84:C6:6C:A7:C0"],
                                   "ClientAPILevel": "2" }}
-        :returns: JSON with list of clents and a list of mac addresses
+        :returns: JSON with list of clients and a list of mac addresses
         """
         return json.loads(self.__get('get_clientlist()'))
 
@@ -162,12 +162,12 @@ class RouterInfo:
         persec['rx'] = rx
         return json.loads(json.dumps({'speed': persec, 'total': totaldata}))
 
-        def get_traffic_wireless2GHZ(self):
+    def get_traffic_wireless2GHZ(self):
         """
         Get total and current amount of traffic since last restart (Megabit format)
         Note there is a two second delay to determine current traffic
         Format: {"speed": {"tx": 0.13004302978515625, "rx": 4.189826965332031},
-                 "total": {"sent": 15902.060073852539, "recv": 10931.135665893555}}
+                "total": {"sent": 15902.060073852539, "recv": 10931.135665893555}}
         :returns: JSON with current up and down stream in Mbit/s and totals since last reboot
         """
         meas_1 = self.__get('netdev(appobj)')
