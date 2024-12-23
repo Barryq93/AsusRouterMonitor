@@ -69,9 +69,6 @@ mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
           FROM ${dbName}.${tableName}
           WHERE timeStamp < MaxTime;
       DELETE FROM ${dbName}.${tableName}
-      WHERE ${tableName}.timeStamp < MaxTime;
-    END //
-  DELIMITER ;
       WHERE ${tableName}.timeStamp < MAXTIME;
     END //
   DELIMITER ;
