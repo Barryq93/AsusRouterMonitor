@@ -35,7 +35,7 @@ sqlTable = os.environ['tableName']
 # getting interval time for env
 interval=int(os.environ['intervalSeconds'])
 
-def connect(insert):
+def connect(values):
     try:
         # connect to DB
         mydb = mysql.connector.connect(
@@ -44,9 +44,9 @@ def connect(insert):
             user='{}'.format(sqlUser),
             passwd='{}'.format(sqlPasswd),
             database='{}'.format(sqlDb)
-            )
+        )
     except Exception as e:
-        logger.error('unable to connect to DB ', e)
+        logger.exception('unable to connect to DB')
         sys.exit(1)
 
     logger.info('Connecting to DB')
@@ -54,11 +54,12 @@ def connect(insert):
 
     try:
         # execute insert statement
-        mycursor.execute(insert)
+        sqlCommand = '''INSERT INTO {}(Uptime, memTotal, memFree, memUsed, cpu1Total, cpu2Total, cpu3Total, cpu4Total, cpu1Usage, cpu2Usage, cpu3Usage, cpu4Usage, wanStatus, deviceCount, internetTXSpeed, internetRXSpeed, 2GHXTXSpeed, 2GHXRXSpeed, 5GHXTXSpeed, 5GHXRXSpeed, wiredTXSpeed, wiredRXSpeed, bridgeTXSpeed, bridgeRXSpeed, sentData, recvData) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'''.format(sqlTable)
+        mycursor.execute(sqlCommand, values)
         logger.info('Insert Complete')
         mydb.commit()
     except Exception as e:
-        logger.error('unable to insert to DB ', e)
+        logger.exception('unable to insert to DB')
         sys.exit(1)
 
     # close db connection
@@ -69,96 +70,44 @@ def connect(insert):
 def getAndInsert(ri):
     try:
         # gather router info
-        Uptime=ri.get_uptime_secs()
-        memTotal=int(ri.get_memory_usage().get('mem_total'))
-        memFree=int(ri.get_memory_usage().get('mem_free'))
-        memUsed=int(ri.get_memory_usage().get('mem_used'))
-        cpu1Total=int(ri.get_cpu_usage().get('cpu1_total'))
-        cpu2Total=int(ri.get_cpu_usage().get('cpu2_total'))
-        cpu3Total=int(ri.get_cpu_usage().get('cpu3_total'))
-        cpu4Total=int(ri.get_cpu_usage().get('cpu4_total'))
-        cpu1Usage=int(ri.get_cpu_usage().get('cpu1_usage'))
-        cpu2Usage=int(ri.get_cpu_usage().get('cpu2_usage'))
-        cpu3Usage=int(ri.get_cpu_usage().get('cpu3_usage'))
-        cpu4Usage=int(ri.get_cpu_usage().get('cpu4_usage'))
-        wanStatus=ri.get_status_wan().get('statusstr')
-        deviceCount=(len(ri.get_dhcp_list().get('dhcpLeaseMacList'))) -1
-        internetTXSpeed=ri.get_traffic().get('speed').get('tx')
-        internetRXSpeed=ri.get_traffic().get('speed').get('rx')
-        _2GHXTXSpeed=ri.get_traffic_wireless2GHZ().get('speed').get('tx')
-        _2GHXRXSpeed=ri.get_traffic_wireless2GHZ().get('speed').get('rx')
-        _5GHXTXSpeed=ri.get_traffic_wireless5GHZ().get('speed').get('tx')
-        _5GHXRXSpeed=ri.get_traffic_wireless5GHZ().get('speed').get('rx')
-        wiredTXSpeed=ri.get_traffic_wired().get('speed').get('tx')
-        wiredRXSpeed=ri.get_traffic_wired().get('speed').get('rx')
-        bridgeTXSpeed=ri.get_traffic_bridge().get('speed').get('tx')
-        bridgeRXSpeed=ri.get_traffic_bridge().get('speed').get('rx')
-        sentData=(ri.get_traffic_total().get('sent'))
-        recvData=(ri.get_traffic_total().get('recv'))
+        Uptime = ri.get_uptime_secs()
+        memTotal = int(ri.get_memory_usage().get('mem_total'))
+        memFree = int(ri.get_memory_usage().get('mem_free'))
+        memUsed = int(ri.get_memory_usage().get('mem_used'))
+        cpu_usage = ri.get_cpu_usage()
+        cpu1Total = int(cpu_usage.get('cpu1_total'))
+        cpu2Total = int(cpu_usage.get('cpu2_total'))
+        cpu3Total = int(cpu_usage.get('cpu3_total'))
+        cpu4Total = int(cpu_usage.get('cpu4_total'))
+        cpu1Usage = int(cpu_usage.get('cpu1_usage'))
+        cpu2Usage = int(cpu_usage.get('cpu2_usage'))
+        cpu3Usage = int(cpu_usage.get('cpu3_usage'))
+        cpu4Usage = int(cpu_usage.get('cpu4_usage'))
+        wanStatus = ri.get_status_wan().get('statusstr')
+        deviceCount = (len(ri.get_dhcp_list().get('dhcpLeaseMacList'))) - 1
+        internetTXSpeed = ri.get_traffic().get('speed').get('tx')
+        internetRXSpeed = ri.get_traffic().get('speed').get('rx')
+        _2GHXTXSpeed = ri.get_traffic_wireless2GHZ().get('speed').get('tx')
+        _2GHXRXSpeed = ri.get_traffic_wireless2GHZ().get('speed').get('rx')
+        _5GHXTXSpeed = ri.get_traffic_wireless5GHZ().get('speed').get('tx')
+        _5GHXRXSpeed = ri.get_traffic_wireless5GHZ().get('speed').get('rx')
+        wiredTXSpeed = ri.get_traffic_wired().get('speed').get('tx')
+        wiredRXSpeed = ri.get_traffic_wired().get('speed').get('rx')
+        bridgeTXSpeed = ri.get_traffic_bridge().get('speed').get('tx')
+        bridgeRXSpeed = ri.get_traffic_bridge().get('speed').get('rx')
+        sentData = (ri.get_traffic_total().get('sent'))
+        recvData = (ri.get_traffic_total().get('recv'))
 
         logger.info('Info Gathered')
     except Exception as e:
-        logger.error('problems gathering info ', e)
+        logger.exception('problems gathering info')
         sys.exit(1)
-    
-    # build insert statement
-    sqlCommand = '''INSERT INTO {}(Uptime,
-                    memTotal,
-                    memFree,
-                    memUsed,
-                    cpu1Total,
-                    cpu2Total,
-                    cpu3Total,
-                    cpu4Total,
-                    cpu1Usage,
-                    cpu2Usage,
-                    cpu3Usage,
-                    cpu4Usage,
-                    wanStatus,
-                    deviceCount,
-                    internetTXSpeed,
-                    internetRXSpeed,
-                    2GHXTXSpeed,
-                    2GHXRXSpeed,
-                    5GHXTXSpeed,
-                    5GHXRXSpeed,
-                    wiredTXSpeed,
-                    wiredRXSpeed,
-                    bridgeTXSpeed,
-                    bridgeRXSpeed,
-                    sentData,
-                    recvData)
-                    VALUE ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{})'''\
-                        .format(sqlTable, \
-                                Uptime, \
-                                memTotal, \
-                                memFree, \
-                                memUsed, \
-                                cpu1Total, \
-                                cpu2Total, \
-                                cpu3Total, \
-                                cpu4Total, \
-                                cpu1Usage, \
-                                cpu2Usage, \
-                                cpu3Usage, \
-                                cpu4Usage, \
-                                wanStatus, \
-                                deviceCount, \
-                                internetTXSpeed, \
-                                internetRXSpeed, \
-                                _2GHXTXSpeed, \
-                                _2GHXRXSpeed, \
-                                _5GHXTXSpeed, \
-                                _5GHXRXSpeed, \
-                                wiredTXSpeed, \
-                                wiredRXSpeed, \
-                                bridgeTXSpeed, \
-                                bridgeRXSpeed, \
-                                sentData, \
-                                recvData)
+
+    # build insert statement values
+    values = (Uptime, memTotal, memFree, memUsed, cpu1Total, cpu2Total, cpu3Total, cpu4Total, cpu1Usage, cpu2Usage, cpu3Usage, cpu4Usage, wanStatus, deviceCount, internetTXSpeed, internetRXSpeed, _2GHXTXSpeed, _2GHXRXSpeed, _5GHXTXSpeed, _5GHXRXSpeed, wiredTXSpeed, wiredRXSpeed, bridgeTXSpeed, bridgeRXSpeed, sentData, recvData)
 
     # pass insert statement to db method
-    connect(sqlCommand)
+    connect(values)
 
 if __name__ == "__main__":
     try:

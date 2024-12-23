@@ -162,7 +162,7 @@ class RouterInfo:
         persec['rx'] = rx
         return json.loads(json.dumps({'speed': persec, 'total': totaldata}))
 
-        def get_traffic_wireless2GHZ(self):
+    def get_traffic_wireless2GHZ(self):
         """
         Get total and current amount of traffic since last restart (Megabit format)
         Note there is a two second delay to determine current traffic

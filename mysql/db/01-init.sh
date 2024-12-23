@@ -53,7 +53,7 @@ mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
 
   SET GLOBAL event_scheduler = ON;
 
-  delimiter |
+  DELIMITER //
   CREATE EVENT cleaning 
     ON SCHEDULE 
       EVERY 21 DAY 
@@ -69,7 +69,6 @@ mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
           WHERE timeStamp < MAXTIME;
       DELETE FROM ${dbName}.${tableName}
       WHERE ${tableName}.timeStamp < MAXTIME;
-    END |
-  delimiter ;
+    END //
+  DELIMITER ;
 EOSQL
-
