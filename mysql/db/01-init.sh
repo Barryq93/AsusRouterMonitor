@@ -7,14 +7,14 @@ log() {
 
 log "Starting database initialization..."
 
-mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
+mariadb -h localhost -u root -p ${ROOT_PASS} <<-EOSQL
     CREATE DATABASE IF NOT EXISTS ${dbName};
     USE ${dbName};
 
     CREATE USER IF NOT EXISTS '${grafanaUser}'@'%' IDENTIFIED BY '${grafanaPass}';
     CREATE USER IF NOT EXISTS '${monitorUser}'@'%' IDENTIFIED BY '${monitorPass}';
-    GRANT SELECT, INSERT, UPDATE, DELETE ON ${dbName}.* TO '${monitorUser}'@'%';
-    GRANT SELECT ON ${dbName}.* TO '${grafanaUser}'@'%';
+    GRANT ALL PRIVILEGES ON *.* TO '${grafanaUser}'@'%';
+    GRANT ALL PRIVILEGES ON *.* TO '${monitorUser}'@'%';
     FLUSH PRIVILEGES;
 
     CREATE TABLE IF NOT EXISTS ${tableName} (
