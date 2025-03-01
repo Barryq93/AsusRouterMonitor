@@ -1,75 +1,109 @@
 #!/bin/sh
 set -e
 
+# Log function for better debugging
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+}
+
+log "Starting database initialization..."
+
 mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
-  CREATE USER '${grafanaUser}'@'%' IDENTIFIED BY '${grafanaPass}';
-  CREATE USER '${monitorUser}'@'%' IDENTIFIED BY '${monitorPass}';
-  GRANT ALL PRIVILEGES ON *.* TO '${grafanaUser}'@'%';
-  GRANT ALL PRIVILEGES ON *.* TO '${monitorUser}'@'%';
+    -- Create database if it doesn't exist
+    CREATE DATABASE IF NOT EXISTS ${dbName};
+    USE ${dbName};
 
-  SET CHARSET UTF8;
+    log "Database ${dbName} created or already exists."
 
-  use ${dbName};
+    -- Create users if they don't exist
+    CREATE USER IF NOT EXISTS '${grafanaUser}'@'%' IDENTIFIED BY '${grafanaPass}';
+    CREATE USER IF NOT EXISTS '${monitorUser}'@'%' IDENTIFIED BY '${monitorPass}';
 
-  SET CHARACTER_SET_CLIENT = utf8;
-  SET CHARACTER_SET_CONNECTION = utf8;
+    log "Users created or already exist."
 
-  DROP TABLE IF EXISTS ${tableName};
-  CREATE TABLE ${tableName} (
-          Uptime  INT,
-          memTotal INT,
-          memFree INT,
-          memUsed INT,
-          cpu1Total INT,
-          cpu2Total INT,
-          cpu3Total INT,
-          cpu4Total INT,
-          cpu1Usage INT,
-          cpu2Usage INT,
-          cpu3Usage INT,
-          cpu4Usage INT,
-          wanStatus VARCHAR(255),
-          deviceCount INT,
-          internetTXSpeed FLOAT,
-          internetRXSpeed FLOAT,
-          2GHXTXSpeed FLOAT,
-          2GHXRXSpeed FLOAT,
-          5GHXTXSpeed FLOAT,
-          5GHXRXSpeed FLOAT,
-          wiredTXSpeed FLOAT,
-          wiredRXSpeed FLOAT,
-          bridgeTXSpeed FLOAT,
-          bridgeRXSpeed FLOAT,
-          sentData FLOAT,
-          recvData FLOAT,
-          timeStamp TIMESTAMP NOT NULL PRIMARY KEY);
+    -- Grant restricted privileges
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ${dbName}.* TO '${monitorUser}'@'%';
+    GRANT SELECT ON ${dbName}.* TO '${grafanaUser}'@'%';
+    FLUSH PRIVILEGES;
 
-  flush privileges;
+    log "Privileges granted to users."
 
-  DROP TABLE IF EXISTS clearedEvents;
-  CREATE TABLE clearedEvents (
+    -- Create tables if they don't exist
+    CREATE TABLE IF NOT EXISTS ${tableName} (
+        Uptime INT NOT NULL,
+        memTotal INT NOT NULL,
+        memFree INT NOT NULL,
+        memUsed INT NOT NULL,
+        cpu1Total INT NOT NULL,
+        cpu2Total INT NOT NULL,
+        cpu3Total INT NOT NULL,
+        cpu4Total INT NOT NULL,
+        cpu1Usage INT NOT NULL,
+        cpu2Usage INT NOT NULL,
+        cpu3Usage INT NOT NULL,
+        cpu4Usage INT NOT NULL,
+        wanStatus VARCHAR(255) NOT NULL,
+        deviceCount INT NOT NULL,
+        internetTXSpeed FLOAT NOT NULL,
+        internetRXSpeed FLOAT NOT NULL,
+        2GHXTXSpeed FLOAT NOT NULL,
+        2GHXRXSpeed FLOAT NOT NULL,
+        5GHXTXSpeed FLOAT NOT NULL,
+        5GHXRXSpeed FLOAT NOT NULL,
+        wiredTXSpeed FLOAT NOT NULL,
+        wiredRXSpeed FLOAT NOT NULL,
+        bridgeTXSpeed FLOAT NOT NULL,
+        bridgeRXSpeed FLOAT NOT NULL,
+        sentData FLOAT NOT NULL,
+        recvData FLOAT NOT NULL,
+        timeStamp TIMESTAMP NOT NULL PRIMARY KEY
+    );
+
+    log "Table ${tableName} created or already exists."
+
+    -- Add index on the timeStamp column for faster queries
+    CREATE INDEX IF NOT EXISTS idx_timestamp ON ${tableName} (timeStamp);
+
+    log "Index on timeStamp column created or already exists."
+
+    -- Create clearedEvents table if it doesn't exist
+    CREATE TABLE IF NOT EXISTS clearedEvents (
         timeStamp TIMESTAMP NOT NULL PRIMARY KEY,
-        clearCount int) ;
+        clearCount INT
+    );
 
-  SET GLOBAL event_scheduler = ON;
+    log "Table clearedEvents created or already exists."
 
-  delimiter |
-  CREATE EVENT cleaning 
-    ON SCHEDULE 
-      EVERY 21 DAY 
-      STARTS CURRENT_TIMESTAMP
-      ON COMPLETION PRESERVE
-    DO
-    BEGIN
-      DECLARE MaxTime TIMESTAMP;
-      SET MaxTime = CURRENT_TIMESTAMP - INTERVAL 14 DAY;
-      INSERT INTO ${dbName}.clearedEvents (timeStamp, clearCount)
-        SELECT CURRENT_TIMESTAMP, count(*)
-          FROM ${dbName}.${tableName}
-          WHERE timeStamp < MAXTIME;
-      DELETE FROM ${dbName}.${tableName}
-      WHERE ${tableName}.timeStamp < MAXTIME;
-    END |
-  delimiter ;
+    -- Enable event scheduler for this session
+    SET GLOBAL event_scheduler = ON;
+
+    log "Event scheduler enabled."
+
+    -- Create cleanup event if it doesn't exist
+    DELIMITER //
+    CREATE EVENT IF NOT EXISTS cleaning
+        ON SCHEDULE EVERY 21 DAY
+        STARTS CURRENT_TIMESTAMP
+        ON COMPLETION PRESERVE
+        DO
+        BEGIN
+            DECLARE MaxTime TIMESTAMP;
+            SET MaxTime = CURRENT_TIMESTAMP - INTERVAL 14 DAY;
+            INSERT INTO ${dbName}.clearedEvents (timeStamp, clearCount)
+                SELECT CURRENT_TIMESTAMP, COUNT(*)
+                FROM ${dbName}.${tableName}
+                WHERE timeStamp < MaxTime;
+            DELETE FROM ${dbName}.${tableName}
+            WHERE timeStamp < MaxTime;
+        END //
+    DELIMITER ;
+
+    log "Cleanup event created or already exists."
 EOSQL
 
+if [ $? -eq 0 ]; then
+    log "Database initialization completed successfully."
+else
+    log "Database initialization failed."
+    exit 1
+fi
