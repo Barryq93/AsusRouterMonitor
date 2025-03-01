@@ -80,40 +80,15 @@ class RouterInfo:
         """Return the uptime of the router in seconds."""
         return int(self.get_uptime()['uptime'])
 
-    def get_memory_usage(self) -> Dict[str, int]:
-        """Return memory usage statistics of the router."""
-        r = self.__get('memory_usage()')
-        logger.info(f"Raw memory usage response: {r}")  # Log at INFO level to ensure visibility
-        if not r:
-            logger.warning("Empty response from memory_usage(), returning default values")
-            return {"mem_total": 0, "mem_free": 0, "mem_used": 0}
-        
-        try:
-            # Try original repo's approach: assume prefix 'memory_usage(): '
-            if r.startswith('memory_usage(): '):
-                json_str = '{' + r[17:]
-                return json.loads(json_str)
-            # Try finding JSON-like structure
-            json_match = re.search(r'\{(?:\s*"[^"]*"\s*:\s*\d+\s*,?)*\s*\}', r)
-            if json_match:
-                json_str = json_match.group(0)
-                return json.loads(json_str)
-            raise ValueError("No valid JSON object found in memory usage response")
-        except (ValueError, json.JSONDecodeError) as e:
-            # Fallback: Manually parse key-value pairs with broader pattern
-            try:
-                mem_data = {}
-                # Match variations: "key": value, key=value, key: value, key value
-                for match in re.finditer(r'"?([^":\s=]+)"?\s*[:=\s]\s*(\d+)', r):
-                    key, value = match.groups()
-                    mem_data[key] = int(value)
-                if not mem_data:
-                    raise ValueError("No valid key-value pairs found")
-                logger.info(f"Parsed memory usage with fallback: {mem_data}")
-                return mem_data
-            except Exception as fallback_e:
-                logger.warning(f"Failed to parse memory usage response: {e}; Fallback failed: {fallback_e}. Returning default values")
-                return {"mem_total": 0, "mem_free": 0, "mem_used": 0}
+    def get_memory_usage(self):
+        """
+        Return memory usage of the router
+        Format: {'mem_total': '262144', 'mem_free': '107320', 'mem_used': '154824'}
+        :returns: JSON with memory variables
+        """
+        s = self.__get('memory_usage()')
+        return json.loads('{' + s[17:])
+
 
     def get_cpu_usage(self) -> Dict[str, int]:
         """Return CPU usage statistics of the router."""
@@ -126,6 +101,15 @@ class RouterInfo:
     def get_clients_fullinfo(self) -> Dict[str, Any]:
         """Obtain a list of all clients connected to the router."""
         r = self.__get('get_clientlist()')
+        return json.loads(r)
+    
+    def get_dhcp_list(self):
+        """
+        Obtain a list of DHCP leases
+        Format: { "dhcpLeaseMacList":[["00:00:00:00:00:00", "name"], ...]
+        :returns: JSON with a list of DHCP leases
+        """
+        r = self.__get("dhcpLeaseMacList()")
         return json.loads(r)
 
     def get_traffic_total(self) -> Dict[str, float]:
@@ -215,9 +199,61 @@ class RouterInfo:
         return self.get_status_wan().get('status') == '1'
 
     def get_speedtest_result(self) -> Optional[Dict[str, float]]:
-        """Get Ookla speed test results (download, upload, latency)."""
+        """Extract the latest speed test results for download, upload, and latency."""
         r = self.__get('ookla_speedtest_get_result()')
+        logger.info(f"Raw Speedtest Response: {r}")  # Log raw response for debugging
+
         try:
-            return json.loads(r)
-        except json.JSONDecodeError as e:
-            raise RouterRequestError(f"Failed to parse speedtest response: {e}")
+            data = json.loads(r)
+            logger.info(f"Parsed Speedtest JSON: {json.dumps(data, indent=4)}")  # Pretty print the parsed JSON
+
+            if not isinstance(data, dict) or "ookla_speedtest_get_result" not in data:
+                raise ValueError("Unexpected speedtest data format: Missing 'ookla_speedtest_get_result' key")
+
+            test_results = data["ookla_speedtest_get_result"]
+            if not isinstance(test_results, list):
+                raise ValueError("Speedtest result is not a list")
+
+            # Initialize variables to store results
+            max_download = 0
+            max_upload = 0
+            min_latency = float('inf')
+
+            # Process each entry in the test results
+            for entry in test_results:
+                if not isinstance(entry, dict):
+                    continue  # Skip invalid entries
+
+                if entry.get("type") == "download" and "download" in entry:
+                    # Extract download bandwidth (in bits per second)
+                    bandwidth = entry["download"].get("bandwidth", 0)
+                    if bandwidth > max_download:
+                        max_download = bandwidth
+
+                elif entry.get("type") == "upload" and "upload" in entry:
+                    # Extract upload bandwidth (in bits per second)
+                    bandwidth = entry["upload"].get("bandwidth", 0)
+                    if bandwidth > max_upload:
+                        max_upload = bandwidth
+
+                elif entry.get("type") == "ping" and "ping" in entry:
+                    # Extract latency (in milliseconds)
+                    latency = entry["ping"].get("latency", float('inf'))
+                    if latency < min_latency:
+                        min_latency = latency
+
+            # If no valid results found, return None
+            if max_download == 0 and max_upload == 0 and min_latency == float('inf'):
+                logger.error("No valid speed test data found")
+                return None
+
+            # Convert speeds to Mbps (1 Mbps = 1,000,000 bits per second)
+            return {
+                "speedDownload": max_download / 1_000_000,
+                "speedUpload": max_upload / 1_000_000,
+                "ping": min_latency
+            }
+
+        except (ValueError, json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.error(f"Failed to parse speedtest response: {e}")
+            return None

@@ -117,7 +117,7 @@ def get_and_insert(ri, include_speedtest=False):
             "cpu3Usage": int(cpu.get('cpu3_usage', 0)),
             "cpu4Usage": int(cpu.get('cpu4_usage', 0)),
             "wanStatus": ri.get_status_wan().get('statusstr'),
-            "deviceCount": len(clients.get('maclist', [])),
+            "deviceCount": (len(ri.get_dhcp_list().get('dhcpLeaseMacList'))) - 1,
             "internetTXSpeed": traffic['speed']['tx'],
             "internetRXSpeed": traffic['speed']['rx'],
             "2GHXTXSpeed": ri.get_traffic_wireless2GHZ()['speed']['tx'],
