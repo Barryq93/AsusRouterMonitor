@@ -34,7 +34,7 @@ sqlDb = os.environ.get('dbName', 'asusMonitor')
 sqlTable = os.environ.get('tableName', 'monitorTable')
 interval = int(os.environ.get('intervalSeconds', '300'))  # Default to 300 seconds
 speedtest_interval = int(os.environ.get('speedtestIntervalSeconds', '240'))  # Default to 1 hour
-print_only = 'false'  # Use env var, default to true
+os.environ.get('print_only', 'false').lower() == 'true'
 
 # Debug print-only mode immediately after setting it
 logger.info(f"Print-only mode initialized as: {print_only}")
