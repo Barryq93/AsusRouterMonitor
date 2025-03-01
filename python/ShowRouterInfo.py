@@ -6,15 +6,17 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 import os
 import logging
 import sys
-import signal  # Added for signal handling
+import signal
 from dotenv import load_dotenv
+import time
 
 # Load environment variables from .env file in the current directory
 load_dotenv()
 
 # Logging setup
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.DEBUG)  # Set to INFO as in your original
+logger.setLevel(logging.INFO)  # Set to INFO as in your original
 formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel(logging.DEBUG)
@@ -33,7 +35,10 @@ sqlDb = os.environ.get('dbName', 'asusMonitor')
 sqlTable = os.environ.get('tableName', 'monitorTable')
 interval = int(os.environ.get('intervalSeconds', '300'))  # Default to 300 seconds
 speedtest_interval = int(os.environ.get('speedtestIntervalSeconds', '3600'))  # Default to 1 hour
-print_only = os.environ.get('PRINT_ONLY', 'false').lower() == 'true'  # Default to false
+print_only = 'true'  # set to true if we want to print out
+
+# Debug print-only mode immediately after setting it
+logger.info(f"Print-only mode initialized as: {print_only}")
 
 # Check for required router variables
 missing_vars = []
@@ -64,6 +69,10 @@ def signal_handler(signum, frame):
 
 def connect(values, include_speedtest=False):
     """Connect to MySQL and insert router data."""
+    if print_only:  # Safeguard: Skip MySQL entirely if print_only is True
+        logger.info("Skipping MySQL connection due to print-only mode")
+        return
+
     columns = ["Uptime", "memTotal", "memFree", "memUsed", "cpu1Total", "cpu2Total", "cpu3Total", "cpu4Total", 
                "cpu1Usage", "cpu2Usage", "cpu3Usage", "cpu4Usage", "wanStatus", "deviceCount", 
                "internetTXSpeed", "internetRXSpeed", "`2GHXTXSpeed`", "`2GHXRXSpeed`", "`5GHXTXSpeed`", "`5GHXRXSpeed`", 
@@ -94,6 +103,7 @@ def connect(values, include_speedtest=False):
 
 def get_and_insert(ri, include_speedtest=False):
     """Gather router info and either insert into database or print based on PRINT_ONLY flag."""
+    logger.info(f"Running get_and_insert with print_only={print_only}")  # Debug mode
     try:
         if not ri.is_wan_online():
             logger.error("Router is offline. Skipping data collection.")
@@ -133,20 +143,19 @@ def get_and_insert(ri, include_speedtest=False):
         }
         if include_speedtest:
             speedtest = ri.get_speedtest_result()
-            data_dict.update({
-                "speedDownload": speedtest.get('download', 0.0),
-                "speedUpload": speedtest.get('upload', 0.0),
-                "ping": speedtest.get('ping', 0.0)
-            })
-        
-        values = tuple(data_dict.values())
+            if speedtest:  # Ensure speedtest is not None
+                data_dict.update({
+                    "speedDownload": speedtest.get('speedDownload', 0.0),
+                    "speedUpload": speedtest.get('speedUpload', 0.0),
+                    "ping": speedtest.get('ping', 0.0)
+                })
         
         if print_only:
             logger.info("Collected Router Data:")
             for key, value in data_dict.items():
                 logger.info(f"{key}: {value}")
         else:
-            connect(values, include_speedtest)
+            connect(tuple(data_dict.values()), include_speedtest)
     except RouterRequestError as e:
         logger.exception(f"Error gathering router info: {e}")
         raise
