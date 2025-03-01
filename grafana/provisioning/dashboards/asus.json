@@ -1061,10 +1061,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -1652,10 +1648,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -1690,9 +1682,10 @@
       "targets": [
         {
           "dataset": "asusMonitor",
-          "editorMode": "builder",
+          "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT MAX(speedUpload) FROM asusMonitor.monitorTable LIMIT 50 ",
+          "rawQuery": true,
+          "rawSql": "SELECT speedUpload FROM asusMonitor.monitorTable \r\nwhere speedUpload != '0.0' Limit 50 ",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1778,14 +1771,14 @@
       "targets": [
         {
           "dataset": "asusMonitor",
-          "editorMode": "builder",
+          "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT MAX(ping) FROM asusMonitor.monitorTable LIMIT 50 ",
+          "rawQuery": true,
+          "rawSql": "SELECT ping FROM asusMonitor.monitorTable \r\nwhere ping != '0.0'\r\nLIMIT 50 ",
           "refId": "A",
           "sql": {
             "columns": [
               {
-                "name": "MAX",
                 "parameters": [
                   {
                     "name": "ping",
@@ -1830,6 +1823,6 @@
   "timezone": "",
   "title": "Router Status",
   "uid": null,
-  "version": 2,
+  "version": 1,
   "weekStart": ""
 }
