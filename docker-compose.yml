@@ -11,14 +11,14 @@ volumes:
 services:
 
   mysql:
-    image: mariadb:latest
+    image: mysql:latest
     container_name: mysql
     env_file:
       - .env
     volumes:
       - mysql_data:/var/lib/mysql
       - ./mysql/db:/docker-entrypoint-initdb.d
-      - ./mysql/conf/eventScheduler.cnf:/etc/mysql/conf.d/eventScheduler.cnf
+      - ./mysql/conf/eventSceduler.cnf:/etc/mysql/conf.d/eventSceduler.cnf
     environment:
       - MYSQL_ROOT_PASSWORD=${ROOT_PASS}
       - MYSQL_DATABASE=${dbName}
