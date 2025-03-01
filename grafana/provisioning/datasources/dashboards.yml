@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'asus-router-monitor'  # Unique name for this provider
+    orgId: 1                     # Default organization ID (usually 1 unless customized)
+    folder: ''                   # Empty string means root folder; specify a folder name if desired (e.g., 'Asus Monitors')
+    type: file                   # Load dashboards from files
+    disableDeletion: false       # Allow deletion of dashboards if the file is removed
+    updateIntervalSeconds: 10    # Check for updates every 10 seconds (optional, for hot-reloading)
+    options:
+      path: /etc/grafana/provisioning/dashboards  # Path inside the container where asus.json resides
