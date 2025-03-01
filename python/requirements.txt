@@ -1,4 +1,3 @@
 requests
-regex
 apscheduler
-mysql-connector-python-rf
+mysql-connector-python
