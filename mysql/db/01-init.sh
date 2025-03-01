@@ -7,7 +7,7 @@ log() {
 
 log "Starting database initialization..."
 
-mariadb -h localhost -u root -p ${ROOT_PASS} <<-EOSQL
+mysql -h localhost -u root -p ${ROOT_PASS} <<-EOSQL
     CREATE DATABASE IF NOT EXISTS ${dbName};
     USE ${dbName};
 
