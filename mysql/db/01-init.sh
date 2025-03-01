@@ -5,9 +5,16 @@ log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
 }
 
+log "ROOT_PASS=$MYSQL_ROOT_PASSWORD"
+log "dbName=$MYSQL_DATABASE"
+log "grafanaUser=$grafanaUser"
+log "grafanaPass=$grafanaPass"
+log "monitorUser=$monitorUser"
+log "monitorPass=$monitorPass"
+
 log "Starting database initialization..."
 
-mysql -h localhost -u root -p ${ROOT_PASS} <<-EOSQL
+mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
     CREATE DATABASE IF NOT EXISTS ${dbName};
     USE ${dbName};
 
@@ -50,7 +57,7 @@ mysql -h localhost -u root -p ${ROOT_PASS} <<-EOSQL
         timeStamp TIMESTAMP NOT NULL PRIMARY KEY
     );
 
-    CREATE INDEX IF NOT EXISTS idx_timestamp ON ${tableName} (timeStamp);
+    CREATE INDEX idx_timestamp ON ${tableName} (timeStamp);
 
     CREATE TABLE IF NOT EXISTS clearedEvents (
         timeStamp TIMESTAMP NOT NULL PRIMARY KEY,
