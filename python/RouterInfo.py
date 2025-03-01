@@ -198,19 +198,33 @@ class RouterInfo:
         return self.get_status_wan().get('status') == '1'
 
     def start_speedtest(self) -> bool:
-        """Start a new speed test on the router."""
+        """Start a new speed test on the router using ookla_speedtest_exe.cgi with POST."""
         try:
-            r = self.__get('ookla_speedtest_start()')
-            logger.info(f"Speedtest Start Response: {r}")
+            url = f'http://{self.ipaddress}/ookla_speedtest_exe.cgi'
+            # Log the attempt to trigger the speed test with request details
+            logger.info(f"Attempting to trigger speed test via POST to URL: {url}")
+            logger.debug(f"Request headers: {self.headers}")
+            data = {}  # Empty payload; adjust if UI inspection reveals specific data
+            logger.debug(f"Request payload: {data}")
+            
+            r = requests.post(url, headers=self.headers, data=data, timeout=5)
+            r.raise_for_status()
+            
+            # Log the successful response
+            logger.info(f"Speedtest triggered successfully. Response status: {r.status_code}")
+            logger.debug(f"Speedtest response text: {r.text}")
             return True
-        except RouterRequestError as e:
-            logger.error(f"Failed to start speedtest: {e}")
+        except requests.exceptions.RequestException as e:
+            # Log the failure with details
+            logger.error(f"Failed to trigger speedtest: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response status code: {e.response.status_code}")
+                logger.error(f"Response text: {e.response.text}")
             return False
 
     def get_speedtest_result(self) -> Optional[Dict[str, float]]:
         """Extract the latest speed test results for download, upload, and latency."""
         r = self.__get('ookla_speedtest_get_result()')
-
         try:
             data = json.loads(r)
             if not isinstance(data, dict) or "ookla_speedtest_get_result" not in data:
@@ -220,38 +234,27 @@ class RouterInfo:
             if not isinstance(test_results, list):
                 raise ValueError("Speedtest result is not a list")
 
-            # Initialize variables to store results
             download_bandwidth = 0
             upload_bandwidth = 0
             ping_latencies = []
 
-            # Process each entry in the test results
             for entry in test_results:
                 if not isinstance(entry, dict):
-                    continue  # Skip invalid entries
-
+                    continue
                 if entry.get("type") == "result":
-                    # Extract final results from the "result" entry
                     if "download" in entry and "upload" in entry:
                         download_bandwidth = entry["download"].get("bandwidth", 0)
                         upload_bandwidth = entry["upload"].get("bandwidth", 0)
-
                 elif entry.get("type") == "ping" and "ping" in entry:
-                    # Collect all ping latencies to compute the average
                     latency = entry["ping"].get("latency", None)
                     if latency is not None:
                         ping_latencies.append(latency)
 
-            # Compute average ping
             final_latency = sum(ping_latencies) / len(ping_latencies) if ping_latencies else None
-
-            # If no valid results found, return None
             if download_bandwidth == 0 and upload_bandwidth == 0 and final_latency is None:
-                logger.error("No valid speed test data found (missing final download, upload, or ping)")
+                logger.error("No valid speed test data found")
                 return None
 
-            # Convert speeds to Mbps, applying the scaling factor (assuming API reports bytes/sec)
-            # 1 byte = 8 bits, 1 Mbps = 1,000,000 bits per second
             result = {
                 "speedDownload": (download_bandwidth * 8) / 1_000_000 if download_bandwidth else 0.0,
                 "speedUpload": (upload_bandwidth * 8) / 1_000_000 if upload_bandwidth else 0.0,
@@ -259,24 +262,16 @@ class RouterInfo:
             }
             logger.info(f"Speedtest Results: {result}")
             return result
-
         except (ValueError, json.JSONDecodeError, KeyError, TypeError) as e:
             logger.error(f"Failed to parse speedtest response: {e}")
             return None
 
     def wait_for_speedtest(self, timeout: int = 60, interval: int = 5) -> Optional[Dict[str, float]]:
         """Wait for the speed test to complete and return the results."""
-        # Set the speed test start time
-        if not self.set_speedtest_start_time():
-            logger.error("Failed to set speed test start time. Aborting speed test.")
-            return None
-
-        # Start the speed test
         if not self.start_speedtest():
             logger.error("Failed to start speed test. Aborting.")
             return None
 
-        # Poll for results
         start_time = time.time()
         while time.time() - start_time < timeout:
             result = self.get_speedtest_result()
@@ -291,9 +286,7 @@ class RouterInfo:
     def set_speedtest_start_time(self) -> bool:
         """Set the speed test start time using set_ookla_speedtest_start_time.cgi."""
         try:
-            # Construct the URL for the endpoint
             url = f'http://{self.ipaddress}/set_ookla_speedtest_start_time.cgi'
-            # Use the same headers as other requests (includes authentication token)
             r = requests.get(url, headers=self.headers, timeout=5)
             r.raise_for_status()
             logger.info(f"Successfully set speed test start time: {r.text}")

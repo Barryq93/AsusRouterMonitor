@@ -15,8 +15,7 @@ load_dotenv()
 
 # Logging setup
 logger = logging.getLogger()
-#logger.setLevel(logging.DEBUG)  # Set to INFO as in your original
-logger.setLevel(logging.INFO)  # Set to INFO as in your original
+logger.setLevel(logging.INFO)  # Set to INFO; change to DEBUG for more detail
 formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel(logging.DEBUG)
@@ -34,8 +33,8 @@ sqlPasswd = os.environ.get('monitorPass', 'password')
 sqlDb = os.environ.get('dbName', 'asusMonitor')
 sqlTable = os.environ.get('tableName', 'monitorTable')
 interval = int(os.environ.get('intervalSeconds', '300'))  # Default to 300 seconds
-speedtest_interval = int(os.environ.get('speedtestIntervalSeconds', '3600'))  # Default to 1 hour
-print_only = 'true'  # set to true if we want to print out
+speedtest_interval = int(os.environ.get('speedtestIntervalSeconds', '240'))  # Default to 1 hour
+print_only = 'true'  # Use env var, default to true
 
 # Debug print-only mode immediately after setting it
 logger.info(f"Print-only mode initialized as: {print_only}")
@@ -103,7 +102,7 @@ def connect(values, include_speedtest=False):
 
 def get_and_insert(ri, include_speedtest=False):
     """Gather router info and either insert into database or print based on PRINT_ONLY flag."""
-    logger.info(f"Running get_and_insert with print_only={print_only}")  # Debug mode
+    logger.info(f"Running get_and_insert with print_only={print_only}")
     try:
         if not ri.is_wan_online():
             logger.error("Router is offline. Skipping data collection.")
@@ -142,12 +141,20 @@ def get_and_insert(ri, include_speedtest=False):
             "recvData": traffic['total']['recv']
         }
         if include_speedtest:
-            speedtest = ri.get_speedtest_result()
-            if speedtest:  # Ensure speedtest is not None
+            # Use wait_for_speedtest to trigger a new test and get fresh results
+            speedtest = ri.wait_for_speedtest(timeout=120)  # Increased timeout to 120s for speed test
+            if speedtest:
                 data_dict.update({
                     "speedDownload": speedtest.get('speedDownload', 0.0),
                     "speedUpload": speedtest.get('speedUpload', 0.0),
                     "ping": speedtest.get('ping', 0.0)
+                })
+            else:
+                logger.warning("Speedtest failed or returned no results; using defaults")
+                data_dict.update({
+                    "speedDownload": 0.0,
+                    "speedUpload": 0.0,
+                    "ping": 0.0
                 })
         
         if print_only:
@@ -185,6 +192,7 @@ if __name__ == "__main__":
         logger.error("Exiting due to inability to connect to router.")
         sys.exit(1)
 
+    logger.info(f"Interval set to: {interval} seconds for regular task")
     @scheduler.scheduled_job('interval', seconds=interval, max_instances=5)
     def regular_task():
         global ri
@@ -197,6 +205,7 @@ if __name__ == "__main__":
             if not ri:
                 logger.error("Failed to reconnect. Skipping this run.")
 
+    logger.info(f"Interval set to: {speedtest_interval} seconds for regular task")
     @scheduler.scheduled_job('interval', seconds=speedtest_interval, max_instances=1)
     def speedtest_task():
         global ri
