@@ -54,13 +54,11 @@ mysql -h localhost -u root -p${ROOT_PASS} <<-EOSQL
         speedDownload FLOAT NOT NULL DEFAULT 0.0,
         speedUpload FLOAT NOT NULL DEFAULT 0.0,
         ping FLOAT NOT NULL DEFAULT 0.0,
-        timeStamp TIMESTAMP NOT NULL PRIMARY KEY
+        timeStamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP PRIMARY KEY
     );
 
-    CREATE INDEX idx_timestamp ON ${tableName} (timeStamp);
-
     CREATE TABLE IF NOT EXISTS clearedEvents (
-        timeStamp TIMESTAMP NOT NULL PRIMARY KEY,
+        timeStamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP PRIMARY KEY,
         clearCount INT
     );
 
