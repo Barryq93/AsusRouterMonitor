@@ -3,6 +3,7 @@ import base64
 import json
 import time
 import logging
+import re
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ class RouterInfo:
             r.raise_for_status()
             return r.text
         except requests.exceptions.RequestException as e:
-            if isinstance(e, requests.exceptions.HTTPError) and e.response.status_code == 401:
+            if isinstance(e, requests.exceptions.HTTPError) and getattr(e.response, 'status_code', None) == 401:
                 logger.info("Token expired, attempting to refresh.")
                 if self.__refresh_token():
                     return self.__get(command)  # Retry with new token
@@ -69,7 +70,7 @@ class RouterInfo:
         """Return the uptime of the router."""
         r = self.__get('uptime()')
         try:
-            since = r.partition(':')[2].partition('(')[0].strip()
+            since = r.partition(':')[2].partition('(')[0].strip().rstrip(':')
             uptime = r.partition('(')[2].partition(' ')[0]
             return {"since": since, "uptime": uptime}
         except Exception as e:
@@ -82,10 +83,37 @@ class RouterInfo:
     def get_memory_usage(self) -> Dict[str, int]:
         """Return memory usage statistics of the router."""
         r = self.__get('memory_usage()')
+        logger.info(f"Raw memory usage response: {r}")  # Log at INFO level to ensure visibility
+        if not r:
+            logger.warning("Empty response from memory_usage(), returning default values")
+            return {"mem_total": 0, "mem_free": 0, "mem_used": 0}
+        
         try:
-            return json.loads('{' + r[17:])
-        except json.JSONDecodeError as e:
-            raise RouterRequestError(f"Failed to parse memory usage response: {e}")
+            # Try original repo's approach: assume prefix 'memory_usage(): '
+            if r.startswith('memory_usage(): '):
+                json_str = '{' + r[17:]
+                return json.loads(json_str)
+            # Try finding JSON-like structure
+            json_match = re.search(r'\{(?:\s*"[^"]*"\s*:\s*\d+\s*,?)*\s*\}', r)
+            if json_match:
+                json_str = json_match.group(0)
+                return json.loads(json_str)
+            raise ValueError("No valid JSON object found in memory usage response")
+        except (ValueError, json.JSONDecodeError) as e:
+            # Fallback: Manually parse key-value pairs with broader pattern
+            try:
+                mem_data = {}
+                # Match variations: "key": value, key=value, key: value, key value
+                for match in re.finditer(r'"?([^":\s=]+)"?\s*[:=\s]\s*(\d+)', r):
+                    key, value = match.groups()
+                    mem_data[key] = int(value)
+                if not mem_data:
+                    raise ValueError("No valid key-value pairs found")
+                logger.info(f"Parsed memory usage with fallback: {mem_data}")
+                return mem_data
+            except Exception as fallback_e:
+                logger.warning(f"Failed to parse memory usage response: {e}; Fallback failed: {fallback_e}. Returning default values")
+                return {"mem_total": 0, "mem_free": 0, "mem_used": 0}
 
     def get_cpu_usage(self) -> Dict[str, int]:
         """Return CPU usage statistics of the router."""

@@ -1,10 +1,19 @@
 import unittest
 from unittest.mock import patch, Mock
+import os
+import requests  # Added import
+from dotenv import load_dotenv
 from RouterInfo import RouterInfo, RouterRequestError
+
+# Load environment variables from .env file
+load_dotenv()
 
 class TestRouterInfo(unittest.TestCase):
     def setUp(self):
-        self.ri = RouterInfo("192.168.1.1", "admin", "password")
+        router_ip = os.getenv('routerIP', '192.168.1.1')
+        router_user = os.getenv('routerUser', 'admin')
+        router_pass = os.getenv('routerPass', 'password')
+        self.ri = RouterInfo(router_ip, router_user, router_pass)
         self.ri.headers = {'user-agent': "test", 'cookie': "asus_token=test_token"}
 
     @patch('requests.post')
@@ -13,7 +22,10 @@ class TestRouterInfo(unittest.TestCase):
         mock_response.json.return_value = {"asus_token": "test_token"}
         mock_response.raise_for_status.return_value = None
         mock_post.return_value = mock_response
-        ri = RouterInfo("192.168.1.1", "admin", "password")
+        router_ip = os.getenv('routerIP', '192.168.1.1')
+        router_user = os.getenv('routerUser', 'admin')
+        router_pass = os.getenv('routerPass', 'password')
+        ri = RouterInfo(router_ip, router_user, router_pass)
         self.assertIsNotNone(ri.headers)
 
     @patch('requests.post')
@@ -22,8 +34,11 @@ class TestRouterInfo(unittest.TestCase):
         mock_response.json.return_value = {}
         mock_response.raise_for_status.return_value = None
         mock_post.return_value = mock_response
+        router_ip = os.getenv('routerIP', '192.168.1.1')
+        router_user = os.getenv('routerUser', 'admin')
+        router_pass = os.getenv('routerPass', 'password')
         with self.assertRaises(RouterRequestError):
-            RouterInfo("192.168.1.1", "admin", "password")
+            RouterInfo(router_ip, router_user, router_pass)
 
     @patch('requests.post')
     def test_get_uptime(self, mock_post):

@@ -4,37 +4,63 @@ from RouterInfo import RouterInfo, RouterRequestError
 import mysql.connector
 from apscheduler.schedulers.blocking import BlockingScheduler
 import os
-import time
 import logging
 import sys
+import signal  # Added for signal handling
+from dotenv import load_dotenv
+
+# Load environment variables from .env file in the current directory
+load_dotenv()
 
 # Logging setup
-os.environ['TZ']
-time.tzset()
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel(logging.DEBUG)
 stdout_handler.setFormatter(formatter)
 logger.addHandler(stdout_handler)
 
-# Router and MySQL variables from environment
-asusIP = os.environ['routerIP']
-asusUser = os.environ['routerUser']
-asusPass = os.environ['routerPass']
-sqlIP = os.environ['mysqlIP']
-sqlPort = os.environ['mysqlPort']
-sqlUser = os.environ['monitorUser']
-sqlPasswd = os.environ['monitorPass']
-sqlDb = os.environ['dbName']
-sqlTable = os.environ['tableName']
-interval = int(os.environ['intervalSeconds'])
-speedtest_interval = int(os.environ.get('speedtestIntervalSeconds', 3600))  # Default to 1 hour
+# Router and MySQL variables from environment with defaults or checks
+asusIP = os.environ.get('routerIP')
+asusUser = os.environ.get('routerUser')
+asusPass = os.environ.get('routerPass')
+sqlIP = os.environ.get('mysqlIP', 'localhost')
+sqlPort = os.environ.get('mysqlPort', '3306')
+sqlUser = os.environ.get('monitorUser', 'monitor')
+sqlPasswd = os.environ.get('monitorPass', 'password')
+sqlDb = os.environ.get('dbName', 'asusMonitor')
+sqlTable = os.environ.get('tableName', 'monitorTable')
+interval = int(os.environ.get('intervalSeconds', '300'))  # Default to 300 seconds
+speedtest_interval = int(os.environ.get('speedtestIntervalSeconds', '3600'))  # Default to 1 hour
+print_only = os.environ.get('PRINT_ONLY', 'false').lower() == 'true'  # Default to false
+
+# Check for required router variables
+missing_vars = []
+if not asusIP:
+    missing_vars.append('routerIP')
+if not asusUser:
+    missing_vars.append('routerUser')
+if not asusPass:
+    missing_vars.append('routerPass')
+
+if missing_vars:
+    logger.error(f"Missing required environment variables: {', '.join(missing_vars)}. Please set them in .env or environment.")
+    sys.exit(1)
 
 # Retry settings
 MAX_RETRIES = 3
 RETRY_DELAY = 10  # seconds
+
+# Global scheduler instance for shutdown
+scheduler = BlockingScheduler()
+
+def signal_handler(signum, frame):
+    """Handle SIGTERM and SIGINT (Ctrl+C) to shut down gracefully."""
+    logger.info(f"Received signal {signum} (e.g., SIGTERM or Ctrl+C), shutting down scheduler...")
+    scheduler.shutdown(wait=False)  # Stop scheduler immediately
+    logger.info("Scheduler stopped")
+    sys.exit(0)
 
 def connect(values, include_speedtest=False):
     """Connect to MySQL and insert router data."""
@@ -67,7 +93,7 @@ def connect(values, include_speedtest=False):
                 logger.info('Closed DB connection')
 
 def get_and_insert(ri, include_speedtest=False):
-    """Gather router info and insert into the database."""
+    """Gather router info and either insert into database or print based on PRINT_ONLY flag."""
     try:
         if not ri.is_wan_online():
             logger.error("Router is offline. Skipping data collection.")
@@ -77,22 +103,50 @@ def get_and_insert(ri, include_speedtest=False):
         cpu = ri.get_cpu_usage()
         traffic = ri.get_traffic()
         clients = ri.get_clients_fullinfo()
-        values = (
-            uptime, int(mem.get('mem_total')), int(mem.get('mem_free')), int(mem.get('mem_used')),
-            int(cpu.get('cpu1_total', 0)), int(cpu.get('cpu2_total', 0)), int(cpu.get('cpu3_total', 0)), int(cpu.get('cpu4_total', 0)),
-            int(cpu.get('cpu1_usage', 0)), int(cpu.get('cpu2_usage', 0)), int(cpu.get('cpu3_usage', 0)), int(cpu.get('cpu4_usage', 0)),
-            ri.get_status_wan().get('statusstr'), len(clients.get('maclist', [])),
-            traffic['speed']['tx'], traffic['speed']['rx'],
-            ri.get_traffic_wireless2GHZ()['speed']['tx'], ri.get_traffic_wireless2GHZ()['speed']['rx'],
-            ri.get_traffic_wireless5GHZ()['speed']['tx'], ri.get_traffic_wireless5GHZ()['speed']['rx'],
-            ri.get_traffic_wired()['speed']['tx'], ri.get_traffic_wired()['speed']['rx'],
-            ri.get_traffic_bridge()['speed']['tx'], ri.get_traffic_bridge()['speed']['rx'],
-            traffic['total']['sent'], traffic['total']['recv']
-        )
+        data_dict = {
+            "Uptime": uptime,
+            "memTotal": int(mem.get('mem_total')),
+            "memFree": int(mem.get('mem_free')),
+            "memUsed": int(mem.get('mem_used')),
+            "cpu1Total": int(cpu.get('cpu1_total', 0)),
+            "cpu2Total": int(cpu.get('cpu2_total', 0)),
+            "cpu3Total": int(cpu.get('cpu3_total', 0)),
+            "cpu4Total": int(cpu.get('cpu4_total', 0)),
+            "cpu1Usage": int(cpu.get('cpu1_usage', 0)),
+            "cpu2Usage": int(cpu.get('cpu2_usage', 0)),
+            "cpu3Usage": int(cpu.get('cpu3_usage', 0)),
+            "cpu4Usage": int(cpu.get('cpu4_usage', 0)),
+            "wanStatus": ri.get_status_wan().get('statusstr'),
+            "deviceCount": len(clients.get('maclist', [])),
+            "internetTXSpeed": traffic['speed']['tx'],
+            "internetRXSpeed": traffic['speed']['rx'],
+            "2GHXTXSpeed": ri.get_traffic_wireless2GHZ()['speed']['tx'],
+            "2GHXRXSpeed": ri.get_traffic_wireless2GHZ()['speed']['rx'],
+            "5GHXTXSpeed": ri.get_traffic_wireless5GHZ()['speed']['tx'],
+            "5GHXRXSpeed": ri.get_traffic_wireless5GHZ()['speed']['rx'],
+            "wiredTXSpeed": ri.get_traffic_wired()['speed']['tx'],
+            "wiredRXSpeed": ri.get_traffic_wired()['speed']['rx'],
+            "bridgeTXSpeed": ri.get_traffic_bridge()['speed']['tx'],
+            "bridgeRXSpeed": ri.get_traffic_bridge()['speed']['rx'],
+            "sentData": traffic['total']['sent'],
+            "recvData": traffic['total']['recv']
+        }
         if include_speedtest:
             speedtest = ri.get_speedtest_result()
-            values += (speedtest.get('download', 0.0), speedtest.get('upload', 0.0), speedtest.get('ping', 0.0))
-        connect(values, include_speedtest)
+            data_dict.update({
+                "speedDownload": speedtest.get('download', 0.0),
+                "speedUpload": speedtest.get('upload', 0.0),
+                "ping": speedtest.get('ping', 0.0)
+            })
+        
+        values = tuple(data_dict.values())
+        
+        if print_only:
+            logger.info("Collected Router Data:")
+            for key, value in data_dict.items():
+                logger.info(f"{key}: {value}")
+        else:
+            connect(values, include_speedtest)
     except RouterRequestError as e:
         logger.exception(f"Error gathering router info: {e}")
         raise
@@ -113,12 +167,14 @@ def connect_to_router():
     return None
 
 if __name__ == "__main__":
+    # Set up signal handlers for SIGTERM and SIGINT (Ctrl+C)
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
     ri = connect_to_router()
     if not ri:
         logger.error("Exiting due to inability to connect to router.")
         sys.exit(1)
-
-    scheduler = BlockingScheduler()
 
     @scheduler.scheduled_job('interval', seconds=interval, max_instances=5)
     def regular_task():

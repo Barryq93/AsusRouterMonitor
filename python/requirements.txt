@@ -1,3 +1,4 @@
 requests
 apscheduler
 mysql-connector-python
+python-dotenv
