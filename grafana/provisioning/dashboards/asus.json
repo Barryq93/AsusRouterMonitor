@@ -1101,11 +1101,12 @@
           "dataset": "asusMonitor",
           "editorMode": "builder",
           "format": "table",
-          "rawSql": "SELECT speedDownload FROM asusMonitor.monitorTable LIMIT 50 ",
+          "rawSql": "SELECT MAX(speedDownload) FROM asusMonitor.monitorTable LIMIT 50 ",
           "refId": "A",
           "sql": {
             "columns": [
               {
+                "name": "MAX",
                 "parameters": [
                   {
                     "name": "speedDownload",
@@ -1691,11 +1692,12 @@
           "dataset": "asusMonitor",
           "editorMode": "builder",
           "format": "table",
-          "rawSql": "SELECT speedUpload FROM asusMonitor.monitorTable LIMIT 50 ",
+          "rawSql": "SELECT MAX(speedUpload) FROM asusMonitor.monitorTable LIMIT 50 ",
           "refId": "A",
           "sql": {
             "columns": [
               {
+                "name": "MAX",
                 "parameters": [
                   {
                     "name": "speedUpload",
@@ -1778,11 +1780,12 @@
           "dataset": "asusMonitor",
           "editorMode": "builder",
           "format": "table",
-          "rawSql": "SELECT ping FROM asusMonitor.monitorTable LIMIT 50 ",
+          "rawSql": "SELECT MAX(ping) FROM asusMonitor.monitorTable LIMIT 50 ",
           "refId": "A",
           "sql": {
             "columns": [
               {
+                "name": "MAX",
                 "parameters": [
                   {
                     "name": "ping",
@@ -1826,7 +1829,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "Router Status",
-  "uid": "hhx2-TtMz",
-  "version": 5,
+  "uid": null,
+  "version": 2,
   "weekStart": ""
 }
