@@ -15,7 +15,7 @@ load_dotenv()
 
 # Logging setup
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)  # Set to INFO; change to DEBUG for more detail
+logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
 stdout_handler = logging.StreamHandler(sys.stdout)
 stdout_handler.setLevel(logging.DEBUG)
@@ -32,12 +32,13 @@ sqlUser = os.environ.get('monitorUser', 'monitor')
 sqlPasswd = os.environ.get('monitorPass', 'password')
 sqlDb = os.environ.get('dbName', 'asusMonitor')
 sqlTable = os.environ.get('tableName', 'monitorTable')
-interval = int(os.environ.get('intervalSeconds', '300'))  # Default to 300 seconds
-speedtest_interval = int(os.environ.get('speedtestIntervalSeconds', '240'))  # Default to 1 hour
-os.environ.get('print_only', 'false').lower() == 'true'
+interval = int(os.environ.get('intervalSeconds', '300'))
+speedtest_interval = int(os.environ.get('speedtestIntervalSeconds', '240'))
+print_only = os.environ.get('print_only', 'false').lower() == 'true'  # Convert to boolean
 
 # Debug print-only mode immediately after setting it
 logger.info(f"Print-only mode initialized as: {print_only}")
+logger.info(f"print_only type: {type(print_only)}, value: {print_only}")  # Added debug
 
 # Check for required router variables
 missing_vars = []
@@ -62,13 +63,13 @@ scheduler = BlockingScheduler()
 def signal_handler(signum, frame):
     """Handle SIGTERM and SIGINT (Ctrl+C) to shut down gracefully."""
     logger.info(f"Received signal {signum} (e.g., SIGTERM or Ctrl+C), shutting down scheduler...")
-    scheduler.shutdown(wait=False)  # Stop scheduler immediately
+    scheduler.shutdown(wait=False)
     logger.info("Scheduler stopped")
     sys.exit(0)
 
 def connect(values, include_speedtest=False):
     """Connect to MySQL and insert router data."""
-    if print_only:  # Safeguard: Skip MySQL entirely if print_only is True
+    if print_only:
         logger.info("Skipping MySQL connection due to print-only mode")
         return
 
@@ -141,8 +142,7 @@ def get_and_insert(ri, include_speedtest=False):
             "recvData": traffic['total']['recv']
         }
         if include_speedtest:
-            # Use wait_for_speedtest to trigger a new test and get fresh results
-            speedtest = ri.wait_for_speedtest(timeout=120)  # Increased timeout to 120s for speed test
+            speedtest = ri.wait_for_speedtest(timeout=120)
             if speedtest:
                 data_dict.update({
                     "speedDownload": speedtest.get('speedDownload', 0.0),
@@ -183,7 +183,6 @@ def connect_to_router():
     return None
 
 if __name__ == "__main__":
-    # Set up signal handlers for SIGTERM and SIGINT (Ctrl+C)
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
